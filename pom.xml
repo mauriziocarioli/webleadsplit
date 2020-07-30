@@ -1,14 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<modelVersion>4.0.0</modelVersion>
-
 	<groupId>com.health_insurance</groupId>
 	<artifactId>webleadsplit</artifactId>
 	<version>1.0.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
-
 	<name>webleadsplit</name>
-
 	<repositories>
 		<repository>
 			<id>redhat-early-access</id>
@@ -21,7 +18,6 @@
 			<url>https://maven.repository.redhat.com/ga/</url>
 		</repository>
 	</repositories>
-
 	<pluginRepositories>
 		<pluginRepository>
 			<id>redhat-early-access</id>
@@ -34,29 +30,24 @@
 			<url>https://maven.repository.redhat.com/ga/</url>
 		</pluginRepository>
 	</pluginRepositories>
-
-
 	<properties>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-
 		<maven.min.version>3.3.9</maven.min.version>
 		<postgresql.version>9.4.1212</postgresql.version>
 		<openjdk18-openshift.version>1.3</openjdk18-openshift.version>
-
 		<spring-boot.version>2.1.6.RELEASE</spring-boot.version>
 		<spring-boot-bom.version>2.1.6.SP3-redhat-00001</spring-boot-bom.version>
 		<version.org.kie>7.33.0.Final-redhat-00002</version.org.kie>
-		<fabric8-maven-plugin.version>3.5.40</fabric8-maven-plugin.version>
-		<jkube.openshift.trimImageInContainerSpec>true</jkube.openshift.trimImageInContainerSpec>
+		<maven-surefire-plugin.version>2.20</maven-surefire-plugin.version>
+		<fabric8-maven-plugin.version>3.5.42</fabric8-maven-plugin.version>
 		<jkube.skip.build.pom>true</jkube.skip.build.pom>
 		<jkube.generator.from>
 			registry.access.redhat.com/redhat-openjdk-18/openjdk18-openshift:${openjdk18-openshift.version}
 		</jkube.generator.from>
 	</properties>
-
 	<dependencyManagement>
 		<dependencies>
 			<dependency>
@@ -68,19 +59,15 @@
 			</dependency>
 		</dependencies>
 	</dependencyManagement>
-
 	<dependencies>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-data-jpa</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
-
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
@@ -102,7 +89,6 @@
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>
-
 	<build>
 		<plugins>
 			<plugin>
@@ -110,7 +96,8 @@
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
 					<profiles>
-						<profile>local</profile>
+						<profile>h2</profile>
+						<profile>postgresql</profile>
 					</profiles>
 					<classifier>exec</classifier>
 				</configuration>
@@ -133,10 +120,9 @@
 			</plugin>
 		</plugins>
 	</build>
-
 	<profiles>
 		<profile>
-			<id>local</id>
+			<id>h2</id>
 			<activation>
 				<activeByDefault>true</activeByDefault>
 			</activation>
@@ -144,6 +130,22 @@
 				<dependency>
 					<groupId>com.h2database</groupId>
 					<artifactId>h2</artifactId>
+					<scope>runtime</scope>
+				</dependency>
+			</dependencies>
+		</profile>
+		<profile>
+			<id>postgresql</id>
+			<activation>
+				<property>
+					<name>postgres</name>
+				</property>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>org.postgresql</groupId>
+					<artifactId>postgresql</artifactId>
+					<version>${postgresql.version}</version>
 					<scope>runtime</scope>
 				</dependency>
 			</dependencies>
@@ -160,10 +162,74 @@
 			</dependencies>
 			<build>
 				<plugins>
+					<!--plugin>
+						<groupId>io.fabric8</groupId>
+						<artifactId>fabric8-maven-plugin</artifactId>
+						<version>${fabric8.version}</version>
+						<configuration>
+							<verbose>false</verbose>
+							<images>
+								<image>
+									<name>apps/${project.artifactId}:${project.version}</name>
+									<build>
+										<from>fabric8/java-jboss-openjdk8-jdk</from>
+										<assembly>
+											<targetDir>/</targetDir>
+											<inline>
+												<files>
+													<file>
+														<source>${project.build.directory}/${project.build.finalName}.${project.packaging}</source>
+														<outputDirectory>deployments</outputDirectory>
+														<destName>${project.build.finalName}.${project.packaging}</destName>
+													</file>
+													<file>
+														<source>${project.artifactId}.xml</source>
+														<outputDirectory>deployments</outputDirectory>
+														<destName>${project.artifactId}.xml</destName>
+													</file>
+												</files>
+												<fileSet>
+													<directory>src/main/docker</directory>
+													<outputDirectory>opt/jboss/.m2</outputDirectory>
+													<includes>
+														<include>settings.xml</include>
+													</includes>
+												</fileSet>
+												<fileSet>
+													<directory>target/local-repository/maven</directory>
+													<outputDirectory>opt/jboss/.m2/repository</outputDirectory>
+												</fileSet>
+											</inline>
+											<user>jboss:jboss:jboss</user>
+										</assembly>
+										<ports>
+											<port>8090</port>
+										</ports>
+									</build>
+								</image>
+							</images>
+						</configuration>
+						<executions>
+							<execution>
+								<phase>install</phase>
+								<goals>
+									<goal>resource</goal>
+									<goal>build</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin-->
 					<plugin>
 						<groupId>org.eclipse.jkube</groupId>
 						<artifactId>openshift-maven-plugin</artifactId>
 						<version>1.0.0-rc-1</version>
+						<configuration>
+							<resources>
+								<env>
+									<JAVA_APP_JAR>/deployments/${project.artifactId}-${project.version}-exec.jar</JAVA_APP_JAR>
+								</env>
+							</resources>
+						</configuration>
 						<executions>
 							<execution>
 								<id>fmp</id>
