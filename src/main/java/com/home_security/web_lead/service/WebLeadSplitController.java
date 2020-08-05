@@ -35,22 +35,24 @@ public class WebLeadSplitController {
      */
 
     @GetMapping("/id/{id}")
+    @ResponseBody
     public Optional <WebLeadSplit> get(@PathVariable("id") Long id) {
-        System.out.println(">>>>>>>>>>>> read by id = "+id);
         return repository.findById(id);
             //.orElse(null);
     }
 
     @GetMapping("/read/{name}")
+    @ResponseBody
     public WebLeadSplit get(@PathVariable("name") String name) {
-        System.out.println(">>>>>>>>>>>> read by name = "+name);
         return repository.lookupByName(name);
             //.orElse(null);
     }
 
-    @PutMapping("/update/{name}")
-    public WebLeadSplit put(@PathVariable("name") String name, @RequestBody(required = false) WebLeadSplit w) {
-        return repository.save(w);
+    @PutMapping("/update")
+    @ResponseBody
+    public String put(@RequestBody(required = true) WebLeadSplit w) {
+        repository.save(w);
+        return "Updated";
     }
 
     /*@ResponseStatus(HttpStatus.NO_CONTENT)
